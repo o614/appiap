@@ -157,11 +157,11 @@
       border: none;
       outline: none;
       color: var(--text);
-      font-family: 'DM Mono', monospace;
-      font-size: 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
       padding: 12px 16px;
     }
-    .search-input::placeholder { color: var(--muted); }
+    .search-input option { color: #000; } /* 为下拉选项增加颜色确保可见 */
 
     .search-btn {
       background: var(--accent);
@@ -185,13 +185,6 @@
       margin-top: 10px;
       font-size: 12px;
       color: var(--muted);
-    }
-    .search-hint code {
-      font-family: 'DM Mono', monospace;
-      background: var(--surface2);
-      padding: 1px 6px;
-      border-radius: 4px;
-      font-size: 11px;
     }
 
     /* Region selector */
@@ -517,39 +510,31 @@
     <section class="hero">
       <div class="hero-eyebrow">App Store · 内购比价工具</div>
       <h1>找到<em>最低价</em>的<br>内购买法</h1>
-      <p>输入 App 名称或 Apple ID，对比全球各区 App Store 内购价格，换算为人民币一目了然。</p>
+      <p>选择名单中的 App，对比全球各区 App Store 内购价格，换算为人民币一目了然。</p>
 
       <div class="search-wrap">
-        <input
-          class="search-input"
-          id="search-input"
-          type="text"
-          placeholder="输入 App 名称或 Apple ID，如 1558453472"
-          autocomplete="off"
-          spellcheck="false"
-        />
-        <button class="search-btn" id="search-btn" onclick="doSearch()">查询</button>
+        <select class="search-input" id="search-input" style="appearance: none; cursor: pointer;">
+          <option value="">加载应用名单中...</option>
+        </select>
+        <button class="search-btn" id="search-btn" onclick="doSearch()" disabled>查询最低价</button>
       </div>
       <div class="search-hint">
-        支持 Apple ID（数字）或应用名称搜索 &nbsp;·&nbsp; 数据来自 <code>iTunes API</code>
+        仅支持查询已收录的 App 列表
       </div>
     </section>
 
-    <!-- Region selector -->
     <div class="region-section">
       <div class="region-label">对比地区</div>
       <div class="region-grid" id="region-grid">
-        <!-- Populated by JS -->
-      </div>
+        </div>
     </div>
 
-    <!-- Result -->
     <div id="app-result">
       <div id="result-inner"></div>
     </div>
 
     <footer>
-      <p>数据来源：Apple iTunes API · Frankfurter 汇率 &nbsp;|&nbsp; 价格仅供参考，以 App Store 实际结算为准</p>
+      <p>数据来源：Apple iTunes API · ER-API 汇率 &nbsp;|&nbsp; 价格仅供参考，以 App Store 实际结算为准</p>
       <p style="margin-top:6px"><a href="https://github.com" target="_blank">GitHub</a> &nbsp;·&nbsp; 部署于 Vercel / Cloudflare</p>
     </footer>
   </div>
@@ -571,17 +556,41 @@
       { code: 'de', name: '德国',     flag: '🇩🇪', currency: 'EUR', symbol: '€' },
     ];
 
-    let selectedRegions = new Set(['cn', 'us', 'hk', 'jp']);
+    let selectedRegions = new Set(['cn', 'us', 'hk', 'jp', 'tr']);
     let exchangeRates = {}; // all relative to CNY
-    let appDataCache = {}; // region → data
+    let appDataCache = {}; 
 
     // ─── Init ─────────────────────────────────────────────────────────────────
     async function init() {
       renderRegionGrid();
       await fetchRates();
-      document.getElementById('search-input').addEventListener('keydown', e => {
-        if (e.key === 'Enter') doSearch();
-      });
+      await loadAppList();
+    }
+
+    async function loadAppList() {
+      try {
+        const res = await fetch('./apps.json');
+        const data = await res.json();
+        const selectEl = document.getElementById('search-input');
+        const btnEl = document.getElementById('search-btn');
+        
+        selectEl.innerHTML = '<option value="" disabled selected>-- 请选择要查询的 App --</option>';
+        
+        const isArray = Array.isArray(data);
+        const appIds = isArray ? data : Object.keys(data);
+        
+        appIds.forEach(id => {
+          const name = isArray ? `Apple ID: ${id}` : data[id];
+          const opt = document.createElement('option');
+          opt.value = id;
+          opt.textContent = name;
+          selectEl.appendChild(opt);
+        });
+        
+        btnEl.disabled = false;
+      } catch (e) {
+        document.getElementById('search-input').innerHTML = '<option value="">名单加载失败，请检查配置</option>';
+      }
     }
 
     function renderRegionGrid() {
@@ -602,21 +611,23 @@
 
     async function fetchRates() {
       try {
-        // Get rates for all currencies we need relative to USD, then convert to CNY
-        const allCurrencies = REGIONS.map(r => r.currency).filter(c => c !== 'USD').join(',');
-        const res = await fetch(`https://api.frankfurter.app/latest?from=USD&to=${allCurrencies}`);
+        const res = await fetch(`https://open.er-api.com/v6/latest/USD`);
         const data = await res.json();
-        // data.rates: { CNY: 6.83, JPY: 145, ... }
-        exchangeRates = { USD: 1, ...data.rates };
-        const cnyPerUsd = data.rates.CNY;
-        // Compute CNY-relative rates
-        for (const [cur, rate] of Object.entries(exchangeRates)) {
-          exchangeRates[cur] = cnyPerUsd / rate; // 1 unit of cur → CNY
+        
+        if(data.result === "success") {
+          exchangeRates = data.rates;
+          const cnyPerUsd = data.rates.CNY;
+          
+          for (const [cur, rate] of Object.entries(exchangeRates)) {
+            exchangeRates[cur] = cnyPerUsd / rate; 
+          }
+          exchangeRates['CNY'] = 1;
+          document.getElementById('rate-display').textContent = `1 USD ≈ ¥${cnyPerUsd.toFixed(4)}`;
+        } else {
+          throw new Error("API Limit");
         }
-        exchangeRates['CNY'] = 1;
-        document.getElementById('rate-display').textContent = `1 USD ≈ ¥${cnyPerUsd.toFixed(4)}`;
       } catch (e) {
-        document.getElementById('rate-display').textContent = '汇率获取失败';
+        document.getElementById('rate-display').textContent = '汇率获取失败 (请检查网络)';
       }
     }
 
@@ -627,31 +638,21 @@
 
     // ─── Search ───────────────────────────────────────────────────────────────
     async function doSearch() {
-      const query = document.getElementById('search-input').value.trim();
-      if (!query) return;
-      if (selectedRegions.size === 0) {
-        alert('请至少选择一个地区');
-        return;
-      }
+      const query = document.getElementById('search-input').value; 
+      if (!query) { alert('请先选择一个应用'); return; }
+      if (selectedRegions.size === 0) { alert('请至少选择一个地区'); return; }
 
       const btn = document.getElementById('search-btn');
       btn.disabled = true;
       btn.textContent = '查询中…';
 
-      const resultEl = document.getElementById('app-result');
       const innerEl = document.getElementById('result-inner');
-      resultEl.style.display = 'block';
-      innerEl.innerHTML = `
-        <div class="status-box">
-          <div class="spinner"></div>
-          <div class="status-msg">正在查询多个地区数据…</div>
-        </div>`;
+      document.getElementById('app-result').style.display = 'block';
+      innerEl.innerHTML = `<div class="status-box"><div class="spinner"></div><div class="status-msg">正在从云端拉取数据…</div></div>`;
 
       try {
         appDataCache = {};
         const regionCodes = [...selectedRegions];
-
-        // Fetch all regions in parallel
         const results = await Promise.allSettled(
           regionCodes.map(code => fetchAppData(query, code))
         );
@@ -665,69 +666,46 @@
         }
 
         if (successful.length === 0) {
-          innerEl.innerHTML = `
-            <div class="status-box">
-              <div class="status-icon">🔍</div>
-              <div class="status-msg">未找到相关应用，请检查名称或 Apple ID 是否正确</div>
-            </div>`;
+          innerEl.innerHTML = `<div class="status-box"><div class="status-icon">⚠️</div><div class="status-msg">未获取到数据。可能是后端尚未抓取该应用，请稍后再试。</div></div>`;
           return;
         }
 
         renderResult(successful);
       } catch (e) {
-        innerEl.innerHTML = `
-          <div class="status-box">
-            <div class="status-icon">⚠️</div>
-            <div class="status-msg">查询失败：${e.message}</div>
-          </div>`;
+        innerEl.innerHTML = `<div class="status-box"><div class="status-icon">⚠️</div><div class="status-msg">查询失败：${e.message}</div></div>`;
       } finally {
         btn.disabled = false;
-        btn.textContent = '查询';
+        btn.textContent = '查询最低价';
       }
     }
 
-    async function fetchAppData(query, regionCode) {
-      const isId = /^\d+$/.test(query);
-      // 将此处替换为你部署好的 Worker 域名
+    async function fetchAppData(appId, regionCode) {
       const PROXY_BASE = 'https://appiap.gaoqianchn.workers.dev'; 
-      
-      const url = isId
-        ? `${PROXY_BASE}/${regionCode}/lookup?id=${query}&entity=inapp&limit=50`
-        : `${PROXY_BASE}/${regionCode}/search?term=${encodeURIComponent(query)}&entity=software&limit=1`;
+      const url = `${PROXY_BASE}/${regionCode}/lookup?id=${appId}&entity=inapp&limit=50`;
 
       const res = await fetch(url);
       if (!res.ok) return null;
       const data = await res.json();
       if (!data.results || data.results.length === 0) return null;
 
-      if (isId) {
-        // First result is the app, rest are IAPs
-        const app = data.results.find(r => r.wrapperType === 'software');
-        const iaps = data.results.filter(r => r.wrapperType === 'in-app-purchase');
-        if (!app) return null;
-        return { app, iaps };
-      } else {
-        // Search result — get the app ID, then lookup with IAPs
-        const appId = data.results[0].trackId;
-        return await fetchAppData(String(appId), regionCode);
-      }
+      const app = data.results.find(r => r.wrapperType === 'software');
+      const iaps = data.results.filter(r => r.wrapperType === 'in-app-purchase');
+      if (!app) return null;
+      return { app, iaps };
     }
 
     // ─── Render ───────────────────────────────────────────────────────────────
     function renderResult(successful) {
       const innerEl = document.getElementById('result-inner');
 
-      // Use first successful region as primary app info
       const primary = successful[0];
       const app = primary.data.app;
 
-      // Gather all unique IAP names across regions
       const allIapNames = new Set();
       for (const { data } of successful) {
         data.iaps.forEach(iap => allIapNames.add(iap.trackName));
       }
 
-      // Build IAP comparison map: iapName → { regionCode: { price, currency, symbol } }
       const iapMap = {};
       for (const { region, data } of successful) {
         const regionInfo = REGIONS.find(r => r.code === region);
@@ -743,11 +721,9 @@
         });
       }
 
-      // Stars
       const rating = app.averageUserRating || 0;
       const stars = '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
 
-      // App header
       let html = `
         <div class="app-header-card">
           <div class="app-icon">
@@ -771,7 +747,6 @@
           <button class="tab" onclick="switchTab('region-compare')">🌍 地区比价</button>
         </div>`;
 
-      // ── Tab 1: IAP list with region columns ──────────────────────────────
       const regionCols = successful.map(s => REGIONS.find(r => r.code === s.region));
       const iapNames = [...allIapNames];
 
@@ -822,7 +797,6 @@
               </td>`;
             }
           });
-          // Best price cell
           html += `<td class="price-cell" style="color:var(--accent)">¥${minCNY.toFixed(2)}</td>`;
           html += `</tr>`;
         }
@@ -831,7 +805,6 @@
       }
       html += `</div>`;
 
-      // ── Tab 2: Region compare – cheapest overall ─────────────────────────
       html += `<div id="tab-region-compare" class="tab-content">`;
       html += `
         <div class="section-head">
@@ -839,7 +812,6 @@
           <div class="section-count">${successful.length} 个地区</div>
         </div>`;
 
-      // Compute average CNY cost per region (using all IAPs available in that region)
       const regionSummaries = successful.map(({ region, data }) => {
         const regionInfo = REGIONS.find(r => r.code === region);
         const total = data.iaps.reduce((s, iap) => {
@@ -878,7 +850,6 @@
       }
       html += `</div>`;
 
-      // Per-IAP cheapest breakdown
       if (iapNames.length > 0) {
         html += `
           <div class="section-head" style="margin-top:24px">
@@ -916,7 +887,7 @@
         html += `</tbody></table></div>`;
       }
 
-      html += `</div>`; // end tab-region-compare
+      html += `</div>`; 
 
       innerEl.innerHTML = html;
     }
