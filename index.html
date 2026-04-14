@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AppPrice — App Store 内购比价</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #1a1a24;
+      --border: #2a2a3a;
+      --accent: #6ee7b7;
+      --accent2: #a78bfa;
+      --accent3: #fbbf24;
+      --text: #f0f0f8;
+      --muted: #6b7280;
+      --danger: #f87171;
+      --card-bg: #13131f;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(110,231,183,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(110,231,183,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .glow-orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(100px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .glow-1 { width: 500px; height: 500px; background: rgba(110,231,183,0.06); top: -100px; left: -100px; }
+    .glow-2 { width: 400px; height: 400px; background: rgba(167,139,250,0.05); bottom: 0; right: 0; }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    header {
+      padding: 32px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .logo-mark {
+      font-family: 'DM Serif Display', serif;
+      font-size: 22px;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+    .logo-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      background: var(--accent);
+      color: #0a0a0f;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    .header-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+    }
+    .rate-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* Hero */
+    .hero {
+      padding: 64px 0 40px;
+      text-align: center;
+    }
+    .hero-eyebrow {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .hero h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(36px, 6vw, 60px);
+      line-height: 1.1;
+      letter-spacing: -1px;
+      margin-bottom: 16px;
+    }
+    .hero h1 em {
+      font-style: italic;
+      color: var(--accent);
+    }
+    .hero p {
+      font-size: 16px;
+      color: var(--muted);
+      max-width: 460px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+      font-weight: 300;
+    }
+
+    /* Search */
+    .search-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 4px;
+      display: flex;
+      gap: 4px;
+      max-width: 600px;
+      margin: 0 auto;
+      transition: border-color 0.2s;
+    }
+    .search-wrap:focus-within { border-color: var(--accent); }
+
+    .search-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      padding: 12px 16px;
+    }
+    .search-input::placeholder { color: var(--muted); }
+
+    .search-btn {
+      background: var(--accent);
+      color: #0a0a0f;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 24px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .search-btn:hover { background: #a7f3d0; transform: translateY(-1px); }
+    .search-btn:active { transform: translateY(0); }
+    .search-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .search-hint {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .search-hint code {
+      font-family: 'DM Mono', monospace;
+      background: var(--surface2);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    /* Region selector */
+    .region-section {
+      margin-top: 32px;
+    }
+    .region-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .region-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+    }
+    .region-tag {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--muted);
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .region-tag:hover { border-color: var(--accent); color: var(--text); }
+    .region-tag.active { border-color: var(--accent); background: rgba(110,231,183,0.08); color: var(--accent); }
+    .region-tag .flag { font-size: 16px; line-height: 1; }
+    .region-tag input { display: none; }
+
+    /* App card */
+    #app-result { margin-top: 40px; display: none; }
+
+    .app-header-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      margin-bottom: 24px;
+    }
+
+    .app-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 18px;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: var(--surface2);
+    }
+    .app-icon img { width: 100%; height: 100%; object-fit: cover; }
+
+    .app-meta { flex: 1; min-width: 0; }
+    .app-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 24px;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+    .app-dev {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .app-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .app-tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .app-tag.category { color: var(--accent2); border-color: rgba(167,139,250,0.3); }
+
+    .app-rating {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .stars { color: var(--accent3); letter-spacing: 1px; font-size: 12px; }
+
+    /* Section header */
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    .section-count {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--accent);
+    }
+
+    /* IAP table */
+    .iap-table-wrap {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .iap-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .iap-table th {
+      padding: 12px 20px;
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-align: left;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .iap-table th.right { text-align: right; }
+
+    .iap-table td {
+      padding: 14px 20px;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(42,42,58,0.5);
+      vertical-align: middle;
+    }
+    .iap-table tr:last-child td { border-bottom: none; }
+    .iap-table tr:hover td { background: rgba(110,231,183,0.02); }
+
+    .iap-name {
+      font-weight: 400;
+      color: var(--text);
+      max-width: 320px;
+    }
+    .iap-name small {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      margin-top: 2px;
+    }
+
+    .price-cell {
+      text-align: right;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+    }
+    .price-original { color: var(--muted); font-size: 11px; margin-top: 2px; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+    .badge-cheaper { background: rgba(110,231,183,0.12); color: var(--accent); border: 1px solid rgba(110,231,183,0.2); }
+    .badge-pricier  { background: rgba(248,113,113,0.1); color: var(--danger); border: 1px solid rgba(248,113,113,0.2); }
+    .badge-same     { background: rgba(107,114,128,0.1); color: var(--muted); border: 1px solid var(--border); }
+
+    /* Multi-region comparison */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .region-price-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      transition: border-color 0.2s;
+    }
+    .region-price-card:hover { border-color: var(--accent); }
+    .region-price-card.best { border-color: var(--accent); background: rgba(110,231,183,0.04); }
+
+    .rpc-flag { font-size: 22px; margin-bottom: 6px; }
+    .rpc-name { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 10px; }
+    .rpc-price {
+      font-family: 'DM Serif Display', serif;
+      font-size: 22px;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+    .rpc-cny {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .rpc-diff {
+      margin-top: 8px;
+      font-size: 11px;
+      font-family: 'DM Mono', monospace;
+    }
+    .best-label {
+      display: inline-block;
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      background: var(--accent);
+      color: #0a0a0f;
+      padding: 2px 6px;
+      border-radius: 3px;
+      margin-bottom: 6px;
+      letter-spacing: 1px;
+    }
+
+    /* Error / loading */
+    .status-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px;
+      text-align: center;
+    }
+    .status-icon { font-size: 36px; margin-bottom: 12px; }
+    .status-msg { color: var(--muted); font-size: 14px; }
+
+    .spinner {
+      width: 32px; height: 32px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Tab bar */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 20px;
+      width: fit-content;
+    }
+    .tab {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--muted);
+      transition: all 0.15s;
+      border: none;
+      background: transparent;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .tab.active {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 40px 0 32px;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--accent); }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .app-header-card { flex-direction: column; }
+      .iap-table th:nth-child(3),
+      .iap-table td:nth-child(3) { display: none; }
+      .compare-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="glow-orb glow-1"></div>
+  <div class="glow-orb glow-2"></div>
+
+  <div class="container">
+    <header>
+      <div class="logo">
+        <span class="logo-mark">AppPrice</span>
+        <span class="logo-badge">BETA</span>
+      </div>
+      <div class="header-info">
+        <span class="rate-dot"></span>
+        <span id="rate-display">汇率加载中…</span>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-eyebrow">App Store · 内购比价工具</div>
+      <h1>找到<em>最低价</em>的<br>内购买法</h1>
+      <p>输入 App 名称或 Apple ID，对比全球各区 App Store 内购价格，换算为人民币一目了然。</p>
+
+      <div class="search-wrap">
+        <input
+          class="search-input"
+          id="search-input"
+          type="text"
+          placeholder="输入 App 名称或 Apple ID，如 1558453472"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button class="search-btn" id="search-btn" onclick="doSearch()">查询</button>
+      </div>
+      <div class="search-hint">
+        支持 Apple ID（数字）或应用名称搜索 &nbsp;·&nbsp; 数据来自 <code>iTunes API</code>
+      </div>
+    </section>
+
+    <!-- Region selector -->
+    <div class="region-section">
+      <div class="region-label">对比地区</div>
+      <div class="region-grid" id="region-grid">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="app-result">
+      <div id="result-inner"></div>
+    </div>
+
+    <footer>
+      <p>数据来源：Apple iTunes API · Frankfurter 汇率 &nbsp;|&nbsp; 价格仅供参考，以 App Store 实际结算为准</p>
+      <p style="margin-top:6px"><a href="https://github.com" target="_blank">GitHub</a> &nbsp;·&nbsp; 部署于 Vercel / Cloudflare</p>
+    </footer>
+  </div>
+
+  <script>
+    // ─── Config ──────────────────────────────────────────────────────────────
+    const REGIONS = [
+      { code: 'cn', name: '中国大陆', flag: '🇨🇳', currency: 'CNY', symbol: '¥' },
+      { code: 'us', name: '美国',     flag: '🇺🇸', currency: 'USD', symbol: '$' },
+      { code: 'hk', name: '香港',     flag: '🇭🇰', currency: 'HKD', symbol: 'HK$' },
+      { code: 'jp', name: '日本',     flag: '🇯🇵', currency: 'JPY', symbol: '¥' },
+      { code: 'gb', name: '英国',     flag: '🇬🇧', currency: 'GBP', symbol: '£' },
+      { code: 'tr', name: '土耳其',   flag: '🇹🇷', currency: 'TRY', symbol: '₺' },
+      { code: 'ar', name: '阿根廷',   flag: '🇦🇷', currency: 'ARS', symbol: '$' },
+      { code: 'ng', name: '尼日利亚', flag: '🇳🇬', currency: 'NGN', symbol: '₦' },
+      { code: 'ru', name: '俄罗斯',   flag: '🇷🇺', currency: 'RUB', symbol: '₽' },
+      { code: 'in', name: '印度',     flag: '🇮🇳', currency: 'INR', symbol: '₹' },
+      { code: 'au', name: '澳大利亚', flag: '🇦🇺', currency: 'AUD', symbol: 'A$' },
+      { code: 'de', name: '德国',     flag: '🇩🇪', currency: 'EUR', symbol: '€' },
+    ];
+
+    let selectedRegions = new Set(['cn', 'us', 'hk', 'jp']);
+    let exchangeRates = {}; // all relative to CNY
+    let appDataCache = {}; // region → data
+
+    // ─── Init ─────────────────────────────────────────────────────────────────
+    async function init() {
+      renderRegionGrid();
+      await fetchRates();
+      document.getElementById('search-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') doSearch();
+      });
+    }
+
+    function renderRegionGrid() {
+      const grid = document.getElementById('region-grid');
+      grid.innerHTML = '';
+      REGIONS.forEach(r => {
+        const label = document.createElement('label');
+        label.className = 'region-tag' + (selectedRegions.has(r.code) ? ' active' : '');
+        label.innerHTML = `<span class="flag">${r.flag}</span>${r.name}<input type="checkbox" value="${r.code}" ${selectedRegions.has(r.code) ? 'checked' : ''}>`;
+        label.addEventListener('change', e => {
+          if (e.target.checked) selectedRegions.add(r.code);
+          else selectedRegions.delete(r.code);
+          label.classList.toggle('active', e.target.checked);
+        });
+        grid.appendChild(label);
+      });
+    }
+
+    async function fetchRates() {
+      try {
+        // Get rates for all currencies we need relative to USD, then convert to CNY
+        const allCurrencies = REGIONS.map(r => r.currency).filter(c => c !== 'USD').join(',');
+        const res = await fetch(`https://api.frankfurter.app/latest?from=USD&to=${allCurrencies}`);
+        const data = await res.json();
+        // data.rates: { CNY: 6.83, JPY: 145, ... }
+        exchangeRates = { USD: 1, ...data.rates };
+        const cnyPerUsd = data.rates.CNY;
+        // Compute CNY-relative rates
+        for (const [cur, rate] of Object.entries(exchangeRates)) {
+          exchangeRates[cur] = cnyPerUsd / rate; // 1 unit of cur → CNY
+        }
+        exchangeRates['CNY'] = 1;
+        document.getElementById('rate-display').textContent = `1 USD ≈ ¥${cnyPerUsd.toFixed(4)}`;
+      } catch (e) {
+        document.getElementById('rate-display').textContent = '汇率获取失败';
+      }
+    }
+
+    function toCNY(amount, currency) {
+      if (!exchangeRates[currency]) return null;
+      return amount * exchangeRates[currency];
+    }
+
+    // ─── Search ───────────────────────────────────────────────────────────────
+    async function doSearch() {
+      const query = document.getElementById('search-input').value.trim();
+      if (!query) return;
+      if (selectedRegions.size === 0) {
+        alert('请至少选择一个地区');
+        return;
+      }
+
+      const btn = document.getElementById('search-btn');
+      btn.disabled = true;
+      btn.textContent = '查询中…';
+
+      const resultEl = document.getElementById('app-result');
+      const innerEl = document.getElementById('result-inner');
+      resultEl.style.display = 'block';
+      innerEl.innerHTML = `
+        <div class="status-box">
+          <div class="spinner"></div>
+          <div class="status-msg">正在查询多个地区数据…</div>
+        </div>`;
+
+      try {
+        appDataCache = {};
+        const regionCodes = [...selectedRegions];
+
+        // Fetch all regions in parallel
+        const results = await Promise.allSettled(
+          regionCodes.map(code => fetchAppData(query, code))
+        );
+
+        const successful = [];
+        for (let i = 0; i < regionCodes.length; i++) {
+          if (results[i].status === 'fulfilled' && results[i].value) {
+            appDataCache[regionCodes[i]] = results[i].value;
+            successful.push({ region: regionCodes[i], data: results[i].value });
+          }
+        }
+
+        if (successful.length === 0) {
+          innerEl.innerHTML = `
+            <div class="status-box">
+              <div class="status-icon">🔍</div>
+              <div class="status-msg">未找到相关应用，请检查名称或 Apple ID 是否正确</div>
+            </div>`;
+          return;
+        }
+
+        renderResult(successful);
+      } catch (e) {
+        innerEl.innerHTML = `
+          <div class="status-box">
+            <div class="status-icon">⚠️</div>
+            <div class="status-msg">查询失败：${e.message}</div>
+          </div>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '查询';
+      }
+    }
+
+    async function fetchAppData(query, regionCode) {
+      const isId = /^\d+$/.test(query);
+      const url = isId
+        ? `https://itunes.apple.com/${regionCode}/lookup?id=${query}&entity=inapp&limit=50`
+        : `https://itunes.apple.com/${regionCode}/search?term=${encodeURIComponent(query)}&entity=software&limit=1`;
+
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!data.results || data.results.length === 0) return null;
+
+      if (isId) {
+        // First result is the app, rest are IAPs
+        const app = data.results.find(r => r.wrapperType === 'software');
+        const iaps = data.results.filter(r => r.wrapperType === 'in-app-purchase');
+        if (!app) return null;
+        return { app, iaps };
+      } else {
+        // Search result — get the app ID, then lookup with IAPs
+        const appId = data.results[0].trackId;
+        return await fetchAppData(String(appId), regionCode);
+      }
+    }
+
+    // ─── Render ───────────────────────────────────────────────────────────────
+    function renderResult(successful) {
+      const innerEl = document.getElementById('result-inner');
+
+      // Use first successful region as primary app info
+      const primary = successful[0];
+      const app = primary.data.app;
+
+      // Gather all unique IAP names across regions
+      const allIapNames = new Set();
+      for (const { data } of successful) {
+        data.iaps.forEach(iap => allIapNames.add(iap.trackName));
+      }
+
+      // Build IAP comparison map: iapName → { regionCode: { price, currency, symbol } }
+      const iapMap = {};
+      for (const { region, data } of successful) {
+        const regionInfo = REGIONS.find(r => r.code === region);
+        data.iaps.forEach(iap => {
+          if (!iapMap[iap.trackName]) iapMap[iap.trackName] = {};
+          iapMap[iap.trackName][region] = {
+            price: iap.price,
+            currency: iap.currency || regionInfo.currency,
+            symbol: regionInfo.symbol,
+            formattedPrice: iap.formattedPrice,
+            cny: toCNY(iap.price, iap.currency || regionInfo.currency),
+          };
+        });
+      }
+
+      // Stars
+      const rating = app.averageUserRating || 0;
+      const stars = '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
+
+      // App header
+      let html = `
+        <div class="app-header-card">
+          <div class="app-icon">
+            <img src="${app.artworkUrl100 || app.artworkUrl60}" alt="${app.trackName}" loading="lazy" />
+          </div>
+          <div class="app-meta">
+            <div class="app-name">${app.trackName}</div>
+            <div class="app-dev">${app.artistName}</div>
+            <div class="app-tags">
+              <span class="app-tag category">${app.primaryGenreName || '应用'}</span>
+              <span class="app-tag">${app.contentAdvisoryRating || ''}</span>
+              <span class="app-tag">v${app.version || '—'}</span>
+              <span class="app-tag">Apple ID: ${app.trackId}</span>
+            </div>
+            ${rating ? `<div class="app-rating"><span class="stars">${stars}</span> ${rating.toFixed(1)} (${(app.userRatingCount||0).toLocaleString()} 评)` : ''}
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('iap-list')">📋 内购列表</button>
+          <button class="tab" onclick="switchTab('region-compare')">🌍 地区比价</button>
+        </div>`;
+
+      // ── Tab 1: IAP list with region columns ──────────────────────────────
+      const regionCols = successful.map(s => REGIONS.find(r => r.code === s.region));
+      const iapNames = [...allIapNames];
+
+      html += `<div id="tab-iap-list" class="tab-content active">`;
+      if (iapNames.length === 0) {
+        html += `<div class="status-box"><div class="status-icon">💡</div><div class="status-msg">该应用暂无内购项目，或所选地区未上架内购</div></div>`;
+      } else {
+        html += `
+          <div class="section-head">
+            <div class="section-title">内购项目</div>
+            <div class="section-count">${iapNames.length} 项</div>
+          </div>
+          <div class="iap-table-wrap">
+            <table class="iap-table">
+              <thead>
+                <tr>
+                  <th>项目名称</th>`;
+        regionCols.forEach(r => {
+          html += `<th class="right">${r.flag} ${r.name}</th>`;
+        });
+        html += `<th class="right">最低 (折¥)</th>
+                </tr>
+              </thead>
+              <tbody>`;
+
+        for (const name of iapNames) {
+          const entries = iapMap[name];
+          const cnys = Object.values(entries).map(e => e.cny).filter(Boolean);
+          const minCNY = Math.min(...cnys);
+          const cnRegion = entries['cn'];
+
+          html += `<tr><td class="iap-name">${name}</td>`;
+          regionCols.forEach(r => {
+            const e = entries[r.code];
+            if (!e) {
+              html += `<td class="price-cell"><span style="color:var(--muted)">—</span></td>`;
+            } else {
+              const diffFromCN = cnRegion ? ((e.cny - cnRegion.cny) / cnRegion.cny * 100) : 0;
+              const isBest = Math.abs(e.cny - minCNY) < 0.01;
+              let badgeHtml = '';
+              if (cnRegion && r.code !== 'cn') {
+                if (isBest) badgeHtml = ` <span class="badge badge-cheaper">最低</span>`;
+                else if (diffFromCN > 5) badgeHtml = ` <span class="badge badge-pricier">+${diffFromCN.toFixed(0)}%</span>`;
+              }
+              html += `<td class="price-cell">
+                ${e.symbol}${e.price.toFixed(2)}${badgeHtml}
+                <div class="price-original">≈ ¥${e.cny.toFixed(2)}</div>
+              </td>`;
+            }
+          });
+          // Best price cell
+          html += `<td class="price-cell" style="color:var(--accent)">¥${minCNY.toFixed(2)}</td>`;
+          html += `</tr>`;
+        }
+
+        html += `</tbody></table></div></div>`;
+      }
+      html += `</div>`;
+
+      // ── Tab 2: Region compare – cheapest overall ─────────────────────────
+      html += `<div id="tab-region-compare" class="tab-content">`;
+      html += `
+        <div class="section-head">
+          <div class="section-title">各区综合价格</div>
+          <div class="section-count">${successful.length} 个地区</div>
+        </div>`;
+
+      // Compute average CNY cost per region (using all IAPs available in that region)
+      const regionSummaries = successful.map(({ region, data }) => {
+        const regionInfo = REGIONS.find(r => r.code === region);
+        const total = data.iaps.reduce((s, iap) => {
+          const c = toCNY(iap.price, iap.currency || regionInfo.currency);
+          return s + (c || 0);
+        }, 0);
+        const avg = data.iaps.length ? total / data.iaps.length : null;
+        return { region, regionInfo, iapCount: data.iaps.length, avgCNY: avg, total };
+      });
+
+      const minAvg = Math.min(...regionSummaries.filter(s => s.avgCNY).map(s => s.avgCNY));
+
+      html += `<div class="compare-grid">`;
+      for (const s of regionSummaries.sort((a, b) => (a.avgCNY||9999) - (b.avgCNY||9999))) {
+        const isBest = s.avgCNY && Math.abs(s.avgCNY - minAvg) < 0.01;
+        const cnSummary = regionSummaries.find(x => x.region === 'cn');
+        let diffHtml = '';
+        if (cnSummary && cnSummary.avgCNY && s.avgCNY && s.region !== 'cn') {
+          const diff = ((s.avgCNY - cnSummary.avgCNY) / cnSummary.avgCNY * 100);
+          diffHtml = diff < -2
+            ? `<div class="rpc-diff" style="color:var(--accent)">比国区便宜 ${Math.abs(diff).toFixed(0)}%</div>`
+            : diff > 2
+            ? `<div class="rpc-diff" style="color:var(--danger)">比国区贵 ${diff.toFixed(0)}%</div>`
+            : `<div class="rpc-diff" style="color:var(--muted)">与国区相当</div>`;
+        }
+
+        html += `
+          <div class="region-price-card ${isBest ? 'best' : ''}">
+            ${isBest ? `<div class="best-label">BEST</div>` : ''}
+            <div class="rpc-flag">${s.regionInfo.flag}</div>
+            <div class="rpc-name">${s.regionInfo.name} · ${s.regionInfo.currency}</div>
+            <div class="rpc-price">${s.iapCount > 0 ? s.iapCount + ' 项内购' : '无内购'}</div>
+            ${s.avgCNY ? `<div class="rpc-cny">平均 ≈ ¥${s.avgCNY.toFixed(2)} / 项</div>` : ''}
+            ${diffHtml}
+          </div>`;
+      }
+      html += `</div>`;
+
+      // Per-IAP cheapest breakdown
+      if (iapNames.length > 0) {
+        html += `
+          <div class="section-head" style="margin-top:24px">
+            <div class="section-title">每项最低价汇总</div>
+          </div>
+          <div class="iap-table-wrap">
+            <table class="iap-table">
+              <thead>
+                <tr>
+                  <th>内购项目</th>
+                  <th class="right">最低地区</th>
+                  <th class="right">当地价格</th>
+                  <th class="right">折合人民币</th>
+                </tr>
+              </thead>
+              <tbody>`;
+
+        for (const name of iapNames) {
+          const entries = iapMap[name];
+          let best = null;
+          for (const [region, e] of Object.entries(entries)) {
+            if (!best || e.cny < best.cny) best = { region, ...e };
+          }
+          if (!best) continue;
+          const regionInfo = REGIONS.find(r => r.code === best.region);
+          html += `
+            <tr>
+              <td class="iap-name">${name}</td>
+              <td class="price-cell">${regionInfo.flag} ${regionInfo.name}</td>
+              <td class="price-cell">${best.symbol}${best.price.toFixed(2)}</td>
+              <td class="price-cell" style="color:var(--accent)">¥${best.cny.toFixed(2)}</td>
+            </tr>`;
+        }
+
+        html += `</tbody></table></div>`;
+      }
+
+      html += `</div>`; // end tab-region-compare
+
+      innerEl.innerHTML = html;
+    }
+
+    function switchTab(id) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-' + id).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    // ─── Start ────────────────────────────────────────────────────────────────
+    init();
+  </script>
+</body>
+</html>
