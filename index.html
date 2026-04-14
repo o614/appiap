@@ -688,9 +688,12 @@
 
     async function fetchAppData(query, regionCode) {
       const isId = /^\d+$/.test(query);
+      // 将此处替换为你部署好的 Worker 域名
+      const PROXY_BASE = 'https://appiap.gaoqianchn.workers.dev'; 
+      
       const url = isId
-        ? `https://itunes.apple.com/${regionCode}/lookup?id=${query}&entity=inapp&limit=50`
-        : `https://itunes.apple.com/${regionCode}/search?term=${encodeURIComponent(query)}&entity=software&limit=1`;
+        ? `${PROXY_BASE}/${regionCode}/lookup?id=${query}&entity=inapp&limit=50`
+        : `${PROXY_BASE}/${regionCode}/search?term=${encodeURIComponent(query)}&entity=software&limit=1`;
 
       const res = await fetch(url);
       if (!res.ok) return null;
